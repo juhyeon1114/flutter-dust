@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
+import 'package:flutter_dust/models/AirResult.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(MyApp());
@@ -25,10 +27,63 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
+  AirResult _result;
+  final _good = 50;
+  final _normal = 100;
+  final _bad = 150;
+
+  Future<AirResult> fetchData() async {
+    var response = await http.get('https://api.airvisual.com/v2/nearest_city?key=ed9aabae-3d0d-442a-ba71-8f8fb8a14aff');
+    AirResult result = AirResult.fromJson(json.decode(response.body));
+    return result;
+  }
+
+  void _onPressedRefresh() {
+    fetchData().then((airResult) {
+      setState(() {
+        _result = airResult;
+      });
+    }).catchError((err) {
+      print(err);
+    });
+  }
+
+  Color getColor(AirResult result) {
+    if (result != null && result.data.current != null) {
+      if (result.data.current.pollution.aqius <= _good) return Colors.green;
+      else if (result.data.current.pollution.aqius <= _normal) return Colors.yellow;
+      else if (result.data.current.pollution.aqius <= _bad) return Colors.orange;
+      else return Colors.red;
+    }
+    return null;
+  }
+
+  String getString(AirResult result) {
+    if (result != null && result.data.current != null) {
+      if (result.data.current.pollution.aqius <= _good) return '좋음';
+      else if (result.data.current.pollution.aqius <= _normal) return '보통';
+      else if (result.data.current.pollution.aqius <= _bad) return '나쁨';
+      else return '최악';
+    }
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData().then((airResult) {
+      setState(() {
+        _result = airResult;
+      });
+    }).catchError((err) {
+      print(err);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
+      body: _result == null || _result.data.current == null ? Center(child: CircularProgressIndicator()) : Padding(
         padding: const EdgeInsets.all(8),
         child: Center(
           child: Column(
@@ -40,13 +95,13 @@ class _MainState extends State<Main> {
                 child: Column(children: [
                   Container(
                     padding: EdgeInsets.all(8),
-                    color: Colors.yellow,
+                    color: getColor(_result),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Text('얼굴사진'),
-                        Text('80', style: TextStyle(fontSize: 40)),
-                        Text('보통', style: TextStyle(fontSize: 20)),
+                        Text('${_result.data.current.pollution.aqius}', style: TextStyle(fontSize: 40)),
+                        Text(getString(_result), style: TextStyle(fontSize: 20)),
                       ]
                     )
                   ),
@@ -56,12 +111,12 @@ class _MainState extends State<Main> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Row(children: [
-                          Text('이미지'),
+                          Image.network('https://airvisual.com/images/${_result.data.current.weather.ic}.png', width: 28),
                           SizedBox(width: 16),
-                          Text('11°', style: TextStyle(fontSize: 16)),
+                          Text('${_result.data.current.weather.tp}°', style: TextStyle(fontSize: 16)),
                         ],),
-                        Text('습도 100%'),
-                        Text('풍속 5.7m/s'),
+                        Text('습도 ${_result.data.current.weather.hu}%'),
+                        Text('풍속 ${_result.data.current.weather.ws}m/s'),
                       ]
                     ),
                   )
@@ -72,9 +127,9 @@ class _MainState extends State<Main> {
                 borderRadius: BorderRadius.circular(30),
                 child: RaisedButton(
                   padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 50),
-                  color: Colors.orange,
+                  color: Colors.grey,
                   child: Icon(Icons.refresh, color: Colors.white),
-                  onPressed: () {},
+                  onPressed: _onPressedRefresh,
                 )
               )
             ],
