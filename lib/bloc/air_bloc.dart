@@ -23,7 +23,6 @@ class AirBloc {
   Future<AirResult> fetchData() async {
     var response = await http.get('https://api.airvisual.com/v2/nearest_city?key=ed9aabae-3d0d-442a-ba71-8f8fb8a14aff');
     AirResult result = AirResult.fromJson(json.decode(response.body));
-    print(result.toJson());
     return result;
   }
 }
